@@ -2122,6 +2122,7 @@ function Library:CreateWindow(opts)
     window.Holder = holder
     window.Scale = New("UIScale", { Scale = 1, Parent = holder })
     window.UserScale = 1
+    window.FitScale = 1
 
     -- unlocks the mouse while the menu is open
     window.ModalButton = New("TextButton", {
@@ -2133,10 +2134,12 @@ function Library:CreateWindow(opts)
     })
 
     local shadow = Shadow(holder, 60, 0.3)
-    local canvas = New("CanvasGroup", {
+    -- A plain clipping Frame, not a CanvasGroup: CanvasGroups render to a capped
+    -- texture, which cuts content off and blurs text on high-DPI screens and phones.
+    local canvas = New("Frame", {
         Name = "Canvas",
         Size = UDim2.fromScale(1, 1),
-        GroupTransparency = 0,
+        ClipsDescendants = true,
         ZIndex = 1,
         Parent = holder,
     })
@@ -2147,7 +2150,6 @@ function Library:CreateWindow(opts)
     local outlineStroke = Stroke(outline, Color3.fromRGB(58, 58, 58), 0.2)
     window.Canvas, window.Outline = canvas, outline
     window.Fades = {
-        { canvas, "GroupTransparency", 0 },
         { outlineStroke, "Transparency", 0.2 },
         { shadow, "ImageTransparency", 0.3 },
     }
@@ -2166,6 +2168,7 @@ function Library:CreateWindow(opts)
     })
     local tint = New("Frame", { Name = "Tint", BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 1, Parent = content })
     self:Bind(tint, { BackgroundColor3 = "Background" })
+    Corner(9, tint) -- keeps the window's right corners round without a CanvasGroup
     New("UIGradient", {
         Rotation = 35,
         Color = CS({ { 0, Color3.fromRGB(205, 205, 205) }, { 1, Color3.fromRGB(255, 255, 255) } }),
@@ -2295,6 +2298,17 @@ function Library:CreateWindow(opts)
         Parent = canvas,
     })
     self:Bind(sidebar, { BackgroundColor3 = "Sidebar" })
+    Corner(9, sidebar) -- round left corners; the patch squares off the right side
+    local sidebarPatch = New("Frame", {
+        Name = "Patch",
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.fromScale(1, 0),
+        Size = UDim2.new(0, 12, 1, 0),
+        ZIndex = 3,
+        Parent = sidebar,
+    })
+    self:Bind(sidebarPatch, { BackgroundColor3 = "Sidebar" })
     local edge = New("Frame", {
         BorderSizePixel = 0,
         AnchorPoint = Vector2.new(1, 0),
@@ -2438,6 +2452,27 @@ function Library:CreateWindow(opts)
     for _, f in ipairs(window.Fades) do
         f[1][f[2]] = 1
     end
+    -- Shrink the window to fit small screens (phones, tablets, small windows).
+    local function fit()
+        local gui = self.ScreenGui
+        local ok, screen = pcall(function()
+            return gui.AbsoluteSize
+        end)
+        if not ok or not screen or screen.X <= 0 or screen.Y <= 0 then
+            return
+        end
+        local margin = 24
+        local scale = math.min(1, (screen.X - margin) / window.Size.X, (screen.Y - margin) / window.Size.Y)
+        window.FitScale = math.max(0.35, scale)
+        if window.Opened then
+            window.Scale.Scale = window.UserScale * window.FitScale
+        end
+    end
+    window._fit = fit
+    fit()
+    pcall(function()
+        self.Maid:Give(self.ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit))
+    end)
     task.defer(function()
         window:Toggle(true)
     end)
@@ -2448,6 +2483,9 @@ function Window:SetSize(v)
     local lib = self.Library
     v = Vector2.new(math.max(self.MinSize.X, math.floor(v.X)), math.max(self.MinSize.Y, math.floor(v.Y)))
     self.Size = v
+    if self._fit then
+        self._fit()
+    end
     if not self.Minimized then
         self.Holder.Size = UDim2.fromOffset(v.X, v.Y)
     else
@@ -2459,7 +2497,7 @@ end
 
 function Window:SetScale(scale)
     self.UserScale = scale
-    self.Library:Tween(self.Scale, { Scale = scale }, 0.25)
+    self.Library:Tween(self.Scale, { Scale = scale * (self.FitScale or 1) }, 0.25)
 end
 
 function Window:Toggle(state)
@@ -2475,12 +2513,12 @@ function Window:Toggle(state)
     local token = self._toggleToken
     if state then
         self.Holder.Visible = true
-        lib:Tween(self.Scale, { Scale = self.UserScale }, 0.3, Enum.EasingStyle.Quint)
+        lib:Tween(self.Scale, { Scale = self.UserScale * self.FitScale }, 0.3, Enum.EasingStyle.Quint)
         for _, f in ipairs(self.Fades) do
             lib:Tween(f[1], { [f[2]] = f[3] }, 0.22)
         end
     else
-        lib:Tween(self.Scale, { Scale = self.UserScale * 0.96 }, 0.22, Enum.EasingStyle.Quint)
+        lib:Tween(self.Scale, { Scale = self.UserScale * self.FitScale * 0.96 }, 0.22, Enum.EasingStyle.Quint)
         for _, f in ipairs(self.Fades) do
             lib:Tween(f[1], { [f[2]] = 1 }, 0.2)
         end
