@@ -9,6 +9,7 @@ A collection of UI libraries for Roblox executors. Each library lives in its own
 | | UI | Style | Load |
 | --- | --- | --- | --- |
 | <img src="raven/preview.png" width="260"> | [**Raven**](raven/) | Dark and minimal: sidebar tabs, sub-tabs, ESP preview, Lucide icons | `raven/Library.lua` |
+| <img src="zyrex/preview.png" width="260"> | [**Zyrex**](zyrex/) | Near-black with blue accents: icon tab bar, sub-tab column, header switches, gradient checkboxes and sliders | `zyrex/Library.lua` |
 
 ## Usage
 
