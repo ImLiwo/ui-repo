@@ -298,6 +298,23 @@ local function MouseLocation()
     return UserInputService:GetMouseLocation()
 end
 
+-- InputObject.Position leaves out the top bar inset, but GetMouseLocation() and
+-- AbsolutePosition (IgnoreGuiInset = true) include it. Every drag uses this so the
+-- start point and the moves share one coordinate space and nothing jumps.
+local function InputPos(input)
+    if input and input.UserInputType == Enum.UserInputType.Touch then
+        local ok, inset = pcall(function()
+            return (cloneref(game:GetService("GuiService"))):GetGuiInset()
+        end)
+        local x, y = input.Position.X, input.Position.Y
+        if ok and typeof(inset) == "Vector2" then
+            x, y = x + inset.X, y + inset.Y
+        end
+        return Vector2.new(x, y)
+    end
+    return MouseLocation()
+end
+
 local function IsInside(gui, point)
     if not gui or not gui.Parent then
         return false
@@ -1351,7 +1368,7 @@ function Library:MakeDraggable(handle, target, ignoreFn)
             return
         end
         drag.Active = true
-        drag.StartMouse = Vector2.new(input.Position.X, input.Position.Y)
+        drag.StartMouse = InputPos(input)
         drag.StartPos = target.Position
         drag.Goal = target.Position
     end))
@@ -1542,7 +1559,7 @@ function Library:_startLoops()
 
         -- close popups on outside click, top of the stack first
         if isClick and #self.PopupStack > 0 then
-            local pos = Vector2.new(input.Position.X, input.Position.Y)
+            local pos = InputPos(input)
             while #self.PopupStack > 0 do
                 local popup = self.PopupStack[#self.PopupStack]
                 if IsInside(popup.Frame, pos) or (popup.Anchor and IsInside(popup.Anchor, pos)) then
@@ -1583,7 +1600,7 @@ function Library:_startLoops()
     self:Connect(UserInputService.InputChanged, function(input)
         local drag = self.ActiveDrag
         if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            SafeCall(drag.Update, Vector2.new(input.Position.X, input.Position.Y))
+            SafeCall(drag.Update, InputPos(input))
         end
     end)
 
@@ -1786,6 +1803,7 @@ function Library:_buildKeybindList()
     Padding(rows, 4, 11, 5, 11)
 
     self.KeybindList = frame
+    self.KeybindListHeader = header
     self.KeybindRows = rows
     self.KeybindRowCache = {}
     self:MakeDraggable(header, frame)
@@ -3886,7 +3904,7 @@ function ColorPicker:Open()
     local function bindDrag(gui, fn)
         gui.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                fn(Vector2.new(input.Position.X, input.Position.Y))
+                fn(InputPos(input))
                 Library.ActiveDrag = { Update = fn }
             end
         end)
@@ -4489,7 +4507,7 @@ function Container:AddSlider(a, b)
         end
         local which = 1
         if s.Range then
-            local v = valueFromX(input.Position.X)
+            local v = valueFromX(InputPos(input).X)
             which = math.abs(v - s.Value[1]) <= math.abs(v - s.Value[2]) and 1 or 2
             if s.Value[1] == s.Value[2] then
                 which = v < s.Value[1] and 1 or 2
@@ -4508,7 +4526,7 @@ function Container:AddSlider(a, b)
             end
         end
         s.Dragging = true
-        update(Vector2.new(input.Position.X, input.Position.Y))
+        update(InputPos(input))
         Library.ActiveDrag = {
             Update = update,
             End = function()
