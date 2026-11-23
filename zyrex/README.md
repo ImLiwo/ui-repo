@@ -28,13 +28,7 @@ A dark UI library for Roblox executors, recreated from the "Zyrex" menu. It has 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImLiwo/ui-repo/main/zyrex/Library.lua"))()
 ```
 
-To run the full demo, which rebuilds the reference page and fills every other tab:
-
-```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ImLiwo/ui-repo/main/zyrex/Example.lua"))()
-```
-
-While you edit the library locally, save it to your executor workspace as `Zyrex/Library.lua`. `Example.lua` uses that file instead of downloading.
+To run the full demo, which rebuilds the reference page and fills every other tab, save `Library.lua` to your executor's workspace folder as `Zyrex/Library.lua`, then run `Example.lua`. It loads the library from that local file (change `LIBRARY_PATH` on line 18 to use another path).
 
 ## Quick start
 

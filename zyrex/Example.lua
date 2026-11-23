@@ -10,18 +10,20 @@
         Scripts   textbox + run
         Settings  (gear on the right) General / Configs
 
-    Loading order:
-      1. If Zyrex/Library.lua exists in your executor workspace it is used (handy while editing).
-      2. Otherwise the library is downloaded from LIBRARY_URL.
+    Loading:
+      Library.lua is read from your executor's workspace folder (LIBRARY_PATH below).
+      Put the file at <executor>/workspace/Zyrex/Library.lua, or change the path.
 ]]
 
-local LIBRARY_URL = "https://raw.githubusercontent.com/ImLiwo/ui-repo/main/zyrex/Library.lua"
+local LIBRARY_PATH = "Zyrex/Library.lua" -- relative to your executor's workspace folder
 
 local function LoadLibrary()
-    if type(isfile) == "function" and type(readfile) == "function" and isfile("Zyrex/Library.lua") then
-        return loadstring(readfile("Zyrex/Library.lua"))()
-    end
-    return loadstring(game:HttpGet(LIBRARY_URL))()
+    assert(type(readfile) == "function" and type(isfile) == "function", "Zyrex: your executor has no readfile/isfile, so it can't load a local Library.lua")
+    assert(isfile(LIBRARY_PATH), "Zyrex: " .. LIBRARY_PATH .. " was not found in your executor's workspace folder")
+    local source = readfile(LIBRARY_PATH)
+    local chunk, err = loadstring(source, "=" .. LIBRARY_PATH)
+    assert(chunk, "Zyrex: failed to compile " .. LIBRARY_PATH .. ": " .. tostring(err))
+    return chunk()
 end
 
 local Library = LoadLibrary()
